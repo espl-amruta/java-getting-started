@@ -12,8 +12,17 @@ import spark.ModelAndView;
 import static spark.Spark.get;
 
 import com.heroku.sdk.jdbc.DatabaseUrl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import javax.sql.DataSource;
+import java.sql.*;
 
 public class Main {
+   @Autowired
+    private DataSource dataSource;
 
   public static void main(String[] args) {
 
@@ -30,12 +39,11 @@ public class Main {
         }, new FreeMarkerEngine());
 
     get("/db", (req, res) -> {
-      Connection connection = null;
+      
       Map<String, Object> attributes = new HashMap<>();
       try {
-        connection = DatabaseUrl.extract().getConnection();
-
-        Statement stmt = connection.createStatement();
+        
+       Statement stmt = dataSource.getConnection().createStatement();
        // stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ticks (tick timestamp)");
         //stmt.executeUpdate("INSERT INTO ticks VALUES (now())");
         ResultSet rs = stmt.executeQuery("SELECT email__c FROM account");
@@ -56,5 +64,21 @@ public class Main {
     }, new FreeMarkerEngine());
 
   }
+  
+   @Bean
+    public BasicDataSource dataSource() throws URISyntaxException {
+        URI dbUri = new URI(System.getenv("DATABASE_URL"));
+
+        String username = dbUri.getUserInfo().split(":")[0];
+        String password = dbUri.getUserInfo().split(":")[1];
+        String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + dbUri.getPath();
+
+        BasicDataSource basicDataSource = new BasicDataSource();
+        basicDataSource.setUrl(dbUrl);
+        basicDataSource.setUsername(username);
+        basicDataSource.setPassword(password);
+
+        return basicDataSource;
+    }
 
 }
